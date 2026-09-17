@@ -8,8 +8,16 @@
   },
   "homepage": "https://openclawcash.com/mcp",
   "repository": "https://github.com/openclawcash/agentwalletapi",
-  "license": "SEE LICENSE IN https://openclawcash.com",
-  "keywords": ["codex", "wallet", "crypto", "evm", "solana", "agents", "openclawcash"],
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "wallet",
+    "crypto",
+    "evm",
+    "solana",
+    "agents",
+    "openclawcash"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
@@ -18,7 +26,11 @@
     "longDescription": "Adds OpenClawCash-managed wallets to Codex: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. A thin bridge to the existing OpenClawCash agent API over MCP; wallet keys and policy enforcement stay server-side, not in this plugin.",
     "developerName": "OpenClawCash",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://openclawcash.com",
     "privacyPolicyURL": "https://openclawcash.com/privacy",
     "termsOfServiceURL": "https://openclawcash.com/terms",

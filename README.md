@@ -1,6 +1,12 @@
-# OpenClawCash Codex plugin
+# OpenClawCash Agent Wallet (Codex plugin)
 
-Connects OpenAI Codex to the [OpenClawCash agent API](https://openclawcash.com/mcp) via the same `@openclawcash/mcp-server` used by Claude Code and every other MCP client — no separate Codex-specific backend.
+Managed EVM and Solana wallets for AI agents — balances, transfers, swaps, approvals, governance policy
+checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. Backed by the
+[OpenClawCash agent API](https://openclawcash.com/mcp).
+
+The plugin connects Codex to the `openclawcash` MCP server (`@openclawcash/mcp-server` on npm) and bundles
+the `agentwalletapi` skill, so Codex follows the same safety model, approval flow, and wallet-label rules
+as every other OpenClawCash integration. Wallet keys and policy enforcement stay server-side.
 
 ## Install
 
@@ -8,18 +14,41 @@ Connects OpenAI Codex to the [OpenClawCash agent API](https://openclawcash.com/m
 codex plugin marketplace add openclawcash/agentwalletapi-codex
 ```
 
-This repo carries its own `.agents/plugins/marketplace.json`, self-referencing only — kept because, unlike Claude Code, Codex's docs never confirm a bare single-plugin repo can skip a marketplace file. It's not shared with the sibling `../claude-code/` or `../hermes/` repos, which live in the same local folder only for development convenience.
-
 Then set your API key before starting Codex:
 
 ```bash
 export OPENCLAWCASH_AGENT_KEY=occ_your_api_key
 ```
 
-## Structure
+Get a key at [openclawcash.com](https://openclawcash.com) (sign up, create a wallet, open API Keys).
 
-Uses Codex's "legacy compatibility" plugin layout (`.codex-plugin/plugin.json` + `.mcp.json` + `skills/` at the plugin root — this repo's own root), which the official docs confirm is still supported alongside the newer portable `agent-plugins.org` layout. `skills/agentwalletapi/` is hard-linked to `../claude-code/skills/agentwalletapi/` — same bytes, one copy on disk, but this repo still stands alone if published or cloned separately (verified: zipping this folder by itself, with no sibling present, still produces complete, correct file content). Neither is the actual source of truth; the `agentwalletapiSkill` repo is — see `../scripts/sync-skill.sh`.
+## Requirements
 
-## Maintainers
+| | |
+|---|---|
+| Required env var | `OPENCLAWCASH_AGENT_KEY` |
+| Optional env var | `OPENCLAWCASH_BASE_URL` (default `https://openclawcash.com`) |
+| Runtime | Node.js with `npx` available |
 
-`.codex-plugin/plugin.json`'s `interface.defaultPrompt` must stay an array of at most 3 strings, each ≤128 characters — a reference implementation I checked while building this had it as a single string, which doesn't match the current spec. Re-check both constraints after editing it.
+The key is only ever sent to `https://openclawcash.com` (or an `https://<subdomain>.openclawcash.com` host).
+
+## What you get
+
+- The `openclawcash` MCP server, exposing wallet, transfer, swap, approvals, checkout, Polymarket, and
+  YieldWolf Casino tools.
+- The `agentwalletapi` skill — endpoint reference, safety model, and wallet-label rules; see
+  [`skills/agentwalletapi/SKILL.md`](skills/agentwalletapi/SKILL.md).
+
+## Layout
+
+```
+.codex-plugin/plugin.json          plugin manifest
+.agents/plugins/marketplace.json   marketplace index for this repo
+.mcp.json                          MCP server declaration
+skills/agentwalletapi/             the skill
+```
+
+## License
+
+MIT — see [LICENSE](LICENSE). "OpenClawCash" is a trademark of OpenClawCash; forks must not imply
+endorsement.
