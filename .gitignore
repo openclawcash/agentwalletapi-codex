@@ -1,0 +1,19 @@
+# Secrets — never committed, matches agentwalletapiSkill/.gitignore
+*.env
+.env
+.env.*
+
+# Python (hermes/agentwalletapi/)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Archives from local staging (e.g. agentwalletapiSkill/publish/clawhub-stage.sh output)
+*.zip
+*.tgz
+
+# OS/editor noise
+.DS_Store
+*.swp

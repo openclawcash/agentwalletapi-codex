@@ -1,0 +1,30 @@
+{
+  "name": "agentwalletapi",
+  "version": "1.28.0",
+  "description": "Managed EVM and Solana wallets for AI agents: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. Backed by the OpenClawCash agent API.",
+  "author": {
+    "name": "OpenClawCash",
+    "url": "https://openclawcash.com"
+  },
+  "homepage": "https://openclawcash.com/mcp",
+  "repository": "https://github.com/openclawcash/agentwalletapi",
+  "license": "SEE LICENSE IN https://openclawcash.com",
+  "keywords": ["codex", "wallet", "crypto", "evm", "solana", "agents", "openclawcash"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "OpenClawCash Agent Wallet",
+    "shortDescription": "Managed EVM and Solana wallets for AI agents",
+    "longDescription": "Adds OpenClawCash-managed wallets to Codex: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. A thin bridge to the existing OpenClawCash agent API over MCP; wallet keys and policy enforcement stay server-side, not in this plugin.",
+    "developerName": "OpenClawCash",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://openclawcash.com",
+    "privacyPolicyURL": "https://openclawcash.com/privacy",
+    "termsOfServiceURL": "https://openclawcash.com/terms",
+    "defaultPrompt": [
+      "Use my OpenClawCash wallet here in Codex. Ask my write-approval mode before the first write action, then follow it."
+    ],
+    "brandColor": "#0F766E"
+  }
+}
