@@ -1,7 +1,7 @@
 ---
 name: agentwalletapi
 description: OpenclawCash crypto wallet API for AI agents (also called openclawcash). Use when an agent needs to send native or token transfers, check balances, list wallets, or interact with EVM and Solana wallets programmatically via OpenclawCash.
-license: Proprietary
+license: MIT
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
