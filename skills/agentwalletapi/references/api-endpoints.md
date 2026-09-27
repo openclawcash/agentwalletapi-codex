@@ -862,7 +862,20 @@ PATCH /api/agent/checkout/webhooks/:id
 DELETE /api/agent/checkout/webhooks/:id
 ```
 
-Subscribe and manage escrow event deliveries (`escrow.funded`, `escrow.released`, etc.).
+Subscribe and manage event deliveries. `eventTypes` accepts:
+
+- Escrow events: `escrow.accepted`, `escrow.funded`, `escrow.proof_submitted`, `escrow.disputed`, `escrow.cancelled`, `escrow.released`, `escrow.refunded`, `escrow.expired`, `escrow.failed`.
+- Wallet events (must be named, `*` does not include them): `wallet.transaction.confirmed`, sent when a transaction is recorded on one of your wallets. Payload `data`: `walletId`, `walletAddress`, `network`, `transactionId`, `type`, `status`, `direction` (`incoming` or `outgoing`), `hash`, `from`, `to`, `value`, `fee`, `platformFee` (`value` and the fees are strings in base units; `from` is the sending address when it is known). There is no failed wallet event: a transfer that fails is refused before it is recorded, so these events report what landed.
+
+Each delivery is a JSON `POST` with the body `{ eventId, eventType, createdAt, data }` and these headers:
+
+- `webhook-id`: the event id (also the idempotency key; de-duplicate on it).
+- `webhook-timestamp`: unix seconds. Reject anything older than 5 minutes.
+- `webhook-signature`: `v1,<base64>`, several space-separated signatures during a secret rotation. The signature is HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{raw body}` with the key `base64decode(secret without the whsec_ prefix)`.
+- `x-occ-event-id`, `x-occ-event-type` and the older `x-occ-signature: sha256=<hex HMAC of the body>` are still sent.
+
+Respond with any `2xx` within 10 seconds. Anything else is retried with growing delays (30s, 2m, 8m, 32m, about 2h, 8.5h, 12h, up to 8 attempts, roughly a day); a retry leaves as soon as a delivery pass runs, and publishing a new event starts one straight away. A `410 Gone` response disables the endpoint instead of retrying, and closes the deliveries already queued for it. Targets must be public `https` URLs (private addresses and redirects are refused). The `secret` is returned once, at creation.
+
 
 ## Polymarket Venue Setup
 

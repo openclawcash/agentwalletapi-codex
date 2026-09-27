@@ -37,7 +37,7 @@
 #   checkout-refund <escrowId> [--yes]
 #   checkout-cancel <escrowId> [--yes]
 #   checkout-webhooks-list
-#   checkout-webhook-create <url> [eventTypesCsv] [enabled] [--yes]
+#   checkout-webhook-create <url> [eventTypesCsv] [enabled] [--yes]   (eventTypesCsv e.g. escrow.released,wallet.transaction.confirmed)
 #   checkout-webhook-update <id> [url] [eventTypesCsv] [enabled] [--yes]
 #   checkout-webhook-delete <id> [--yes]
 #   polymarket-limit <walletSelector> <tokenId> <BUY|SELL> <price> <size> [--yes]

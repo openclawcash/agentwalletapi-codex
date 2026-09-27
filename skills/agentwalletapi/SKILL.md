@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.28.0"
+  version: "1.29.0"
   required_env_vars:
     - AGENTWALLETAPI_KEY
   optional_env_vars:
@@ -238,7 +238,7 @@ by an env var override.
    - `POST /api/agent/checkout/escrows/:id/release` - Release funds
    - `POST /api/agent/checkout/escrows/:id/refund` - Refund funds
    - `POST /api/agent/checkout/escrows/:id/cancel` - Cancel escrow
-   - `GET|POST /api/agent/checkout/webhooks` and `PATCH|DELETE /api/agent/checkout/webhooks/:id` - Manage webhooks
+   - `GET|POST /api/agent/checkout/webhooks` and `PATCH|DELETE /api/agent/checkout/webhooks/:id` - Manage webhooks. `eventTypes` accepts the 9 `escrow.*` events or `*`, and `*` covers escrow events only; `wallet.transaction.confirmed` is the one wallet event and must be named. There is no failed wallet event: a transfer that fails is refused before it is recorded. Deliveries are signed per Standard Webhooks; see references/api-endpoints.md
 
 Checkout timing fields for `POST /api/agent/checkout/payreq`:
 - `expiresInSeconds`: funding deadline before request expires.
@@ -337,10 +337,10 @@ Example:
 | `/api/agent/checkout/escrows/:id/release` | POST | Yes | Release escrow funds |
 | `/api/agent/checkout/escrows/:id/refund` | POST | Yes | Refund escrow funds |
 | `/api/agent/checkout/escrows/:id/cancel` | POST | Yes | Cancel escrow |
-| `/api/agent/checkout/webhooks` | GET | Yes | List checkout webhooks |
-| `/api/agent/checkout/webhooks` | POST | Yes | Create checkout webhook |
-| `/api/agent/checkout/webhooks/:id` | PATCH | Yes | Update checkout webhook |
-| `/api/agent/checkout/webhooks/:id` | DELETE | Yes | Delete checkout webhook |
+| `/api/agent/checkout/webhooks` | GET | Yes | List webhooks |
+| `/api/agent/checkout/webhooks` | POST | Yes | Create webhook (escrow and wallet transaction events) |
+| `/api/agent/checkout/webhooks/:id` | PATCH | Yes | Update webhook |
+| `/api/agent/checkout/webhooks/:id` | DELETE | Yes | Delete webhook |
 | `/api/agent/venues/polymarket/market/resolve` | GET | Yes | Resolve market URL/slug + outcome to Polymarket tokenId |
 | `/api/agent/venues/polymarket/orders/limit` | POST | Yes | Place Polymarket limit order |
 | `/api/agent/venues/polymarket/orders/market` | POST | Yes | Place Polymarket market order |
@@ -527,7 +527,7 @@ Call `GET /api/agent/policies` (all wallets) or `GET /api/agent/policy?walletId=
 - **daily_spending_limit** / **weekly_spending_limit** / **monthly_spending_limit**: rolling-window spend caps
 - **disallow_live_transactions**: blocks non-testnet execution
 - **wallet_purpose**: restricts what the wallet may be used for
-- **checkout_access**: gates Get Paid checkout usage
+- **checkout_access**: gates Escrow (formerly Get Paid) checkout usage
 - **venue_access**: gates venue (e.g. Polymarket) usage
 - **max_open_escrows**: caps concurrent open checkout escrows
 - **trusted_counterparty_tags**: restricts checkout counterparties by tag

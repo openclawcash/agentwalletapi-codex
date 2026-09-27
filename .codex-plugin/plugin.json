@@ -1,6 +1,6 @@
 {
   "name": "agentwalletapi",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "description": "Managed EVM and Solana wallets for AI agents: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. Backed by the OpenClawCash agent API.",
   "author": {
     "name": "OpenClawCash",
