@@ -1,7 +1,7 @@
 {
   "name": "agentwalletapi",
   "version": "1.29.0",
-  "description": "Managed EVM and Solana wallets for AI agents: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. Backed by the OpenClawCash agent API.",
+  "description": "Managed EVM and Solana wallets for AI agents: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Escrow (formerly Get Paid) checkout, Polymarket, and YieldWolf Casino. Backed by the OpenClawCash agent API.",
   "author": {
     "name": "OpenClawCash",
     "url": "https://openclawcash.com"
@@ -23,7 +23,7 @@
   "interface": {
     "displayName": "OpenClawCash Agent Wallet",
     "shortDescription": "Managed EVM and Solana wallets for AI agents",
-    "longDescription": "Adds OpenClawCash-managed wallets to Codex: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Get Paid checkout escrow, Polymarket, and YieldWolf Casino. A thin bridge to the existing OpenClawCash agent API over MCP; wallet keys and policy enforcement stay server-side, not in this plugin.",
+    "longDescription": "Adds OpenClawCash-managed wallets to Codex: balances, transfers, swaps, approvals, governance policy checks, cross-chain bridges, Escrow (formerly Get Paid) checkout, Polymarket, and YieldWolf Casino. A thin bridge to the existing OpenClawCash agent API over MCP; wallet keys and policy enforcement stay server-side, not in this plugin.",
     "developerName": "OpenClawCash",
     "category": "Productivity",
     "capabilities": [
