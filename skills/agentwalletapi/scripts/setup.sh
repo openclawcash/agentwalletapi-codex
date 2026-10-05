@@ -5,9 +5,27 @@
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$SKILL_DIR/.env"
 
+# Read KEY=value lines from the .env file WITHOUT executing it: only the two names this skill uses
+# are accepted, everything else (comments, other names, command substitutions) is ignored.
+load_env_file() {
+    local line key val
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in ''|'#'*) continue ;; esac
+        key="${line%%=*}"
+        val="${line#*=}"
+        key="${key#export }"
+        case "$key" in
+            AGENTWALLETAPI_KEY|AGENTWALLETAPI_URL) ;;
+            *) continue ;;
+        esac
+        val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
+        printf -v "$key" '%s' "$val"
+    done < "$1"
+}
+
 if [ -f "$ENV_FILE" ]; then
     echo "Found existing .env at $ENV_FILE"
-    source "$ENV_FILE"
+    load_env_file "$ENV_FILE"
     if [ -n "$AGENTWALLETAPI_KEY" ] && [ "$AGENTWALLETAPI_KEY" != "occ_your_api_key" ]; then
         echo "API key is configured."
         exit 0

@@ -15,7 +15,7 @@
 #   policies                    List governance policies for every wallet accessible to this API key
 #   policy <walletId|publicWalletId|walletLabel>   Get governance policies for one wallet
 #   create <label> [network] <passphraseEnvVar> [--yes]    Create a wallet (default network: sepolia)
-#   import <label> <network> [privateKey|-] [--yes]   Import wallet (network: mainnet|polygon-mainnet|base-mainnet|solana-mainnet)
+#   import <label> <network> [-] [--yes]   Import wallet (network: mainnet|polygon-mainnet|base-mainnet|solana-mainnet); key via hidden prompt, or '-' for stdin
 #   transactions <walletId|publicWalletId> [chain]     List merged transaction history for a wallet
 #   balance <walletId|publicWalletId> [token] [chain]  Check balances for a wallet
 #   transfer <walletId|publicWalletId> <to> <amount> [token] [chain] [--yes]   Send native/token transfer
@@ -69,8 +69,26 @@ if [ "$COMMAND" = "skill-latest" ]; then
     ALLOW_PUBLIC_ONLY=1
 fi
 
+# Read KEY=value lines from the .env file WITHOUT executing it: only the two names this skill uses
+# are accepted, everything else (comments, other names, command substitutions) is ignored.
+load_env_file() {
+    local line key val
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in ''|'#'*) continue ;; esac
+        key="${line%%=*}"
+        val="${line#*=}"
+        key="${key#export }"
+        case "$key" in
+            AGENTWALLETAPI_KEY|AGENTWALLETAPI_URL) ;;
+            *) continue ;;
+        esac
+        val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
+        printf -v "$key" '%s' "$val"
+    done < "$1"
+}
+
 if [ -f "$ENV_FILE" ]; then
-    source "$ENV_FILE"
+    load_env_file "$ENV_FILE"
 elif [ "$ALLOW_PUBLIC_ONLY" -eq 0 ]; then
     echo "Error: .env file not found. Run setup first:"
     echo "  bash $SKILL_DIR/scripts/setup.sh"
@@ -372,21 +390,22 @@ case "$COMMAND" in
         NETWORK="$3"
         PRIVATE_KEY="$4"
         if [ -z "$LABEL" ] || [ -z "$NETWORK" ]; then
-            echo "Usage: agentwalletapi.sh import <label> <network> [privateKey|-] [--yes]"
+            echo "Usage: agentwalletapi.sh import <label> <network> [-] [--yes]"
             echo "  network options: mainnet | polygon-mainnet | base-mainnet | solana-mainnet"
-            echo "  pass '-' to read private key from stdin (recommended for automation)"
+            echo "  omit '-' to be prompted for the private key (hidden input), or pass '-' to read it from stdin"
             exit 1
         fi
         if [ "$PRIVATE_KEY" = "-" ]; then
             if [ -t 0 ]; then
                 echo "Error: private key input set to '-' but stdin is empty."
-                echo "Example: printf '%s' '<private_key>' | agentwalletapi.sh import <label> <network> - --yes"
+                echo "Example: agentwalletapi.sh import <label> <network> - --yes < /path/to/private-key-file"
                 exit 1
             fi
             IFS= read -r PRIVATE_KEY
         elif [ -n "$PRIVATE_KEY" ]; then
-            echo "WARNING: passing private key as a CLI argument can leak in shell history/process logs."
-            echo "Safer options: omit [privateKey] for hidden prompt, or pass '-' and pipe via stdin."
+            echo "Error: the private key is not accepted as a command argument (it would leak into shell history, process lists, and agent transcripts)."
+            echo "Omit it to be prompted with hidden input, or pass '-' and provide it on stdin."
+            exit 1
         fi
         if [ -z "$PRIVATE_KEY" ]; then
             if [ ! -t 0 ]; then
@@ -1152,7 +1171,7 @@ case "$COMMAND" in
         echo "  policies                                   List governance policies for every accessible wallet"
         echo "  policy <walletId|publicWalletId|walletLabel>  Get governance policies for one wallet"
         echo "  create <label> [network] <passphraseEnvVar> [--yes]  Create wallet (default network: sepolia)"
-        echo "  import <label> <network> [privateKey] [--yes]      Import wallet (mainnet|polygon-mainnet|base-mainnet|solana-mainnet)"
+        echo "  import <label> <network> [-] [--yes]               Import wallet (mainnet|polygon-mainnet|base-mainnet|solana-mainnet); hidden prompt, or '-' for stdin"
         echo "  transactions <walletId|publicWalletId> [chain]    List wallet transaction history"
         echo "  balance <walletId|publicWalletId> [token] [chain] Check balances"
         echo "  transfer <walletId|publicWalletId> <to> <amount> [token] [chain] [--yes]  Send native/token transfer"

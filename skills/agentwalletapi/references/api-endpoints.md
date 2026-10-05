@@ -210,7 +210,7 @@ Content-Type: application/json
 X-Agent-Key: occ_your_api_key
 ```
 
-Request (select the wallet with exactly one of `walletId`, `walletLabel` (its current label), or `walletAddress`):
+Request (the API accepts exactly one of `walletId`, `walletLabel` (its current label), or `walletAddress`; agents select by `walletId`, because rename is a write action and labels are user-controlled text):
 ```json
 { "walletId": "W123ABC", "label": "Trading Bot v2" }
 ```
@@ -288,6 +288,7 @@ Notes:
 - Create requires `exportPassphrase` (minimum 12 characters).
 - Create also requires `exportPassphraseStorageType` and `exportPassphraseStorageRef`.
 - Agent must persist passphrase first, then send the storage fields plus `confirmExportPassphraseSaved: true`.
+- Never write the passphrase value into chat, a tool argument, or a command line: let the shell expand the env var named in `exportPassphraseStorageRef` into the request body.
 
 ## Import Wallet (Agent API)
 
@@ -319,6 +320,7 @@ Response:
 
 Notes:
 - API key must have wallet import enabled (`allowWalletImport`).
+- Import is a human action: an agent must never ask for, accept, or send a private key, since anything in the conversation reaches the model provider and the transcript. Humans import from the dashboard ("Import Existing Wallet") or the CLI `import` command (hidden prompt or stdin).
 - Supported networks: `mainnet`, `polygon-mainnet`, `base-mainnet`, `solana-mainnet`.
 - Endpoint is rate-limited per API key; on limit exceeded returns `429` + `Retry-After`.
 
@@ -478,8 +480,8 @@ X-Agent-Key: occ_your_api_key
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| walletId | number \| string | One of walletId/walletLabel/walletAddress | Wallet numeric ID or public wallet ID from list wallets |
-| walletLabel | string | One of walletId/walletLabel/walletAddress | Wallet name from dashboard (or use walletAddress as alternative selector where supported) |
+| walletId | number \| string | Yes (agents) | Wallet numeric ID or public wallet ID from list wallets. Agents select the sending wallet by `walletId` only |
+| walletLabel | string | No | Accepted by the API instead of `walletId`, but labels are user-controlled text: agents must not pick a sending wallet by label. The MCP `transfer_send` tool rejects it |
 | chain | string | No | Optional guard: `"evm"` or `"solana"` |
 | to | string | Yes | Recipient address (0x... for EVM, base58 for Solana) |
 | token | string | No | Token symbol or token address/mint. Defaults to chain native token (ETH/SOL) |
@@ -498,7 +500,7 @@ Send 0.01 ETH:
 
 Send 100 USDC by symbol:
 ```json
-{ "walletLabel": "Trading Bot", "to": "0xRecipient...", "token": "USDC", "amountDisplay": "100" }
+{ "walletId": 2, "to": "0xRecipient...", "token": "USDC", "amountDisplay": "100" }
 ```
 
 Send USDC by contract address + base units:
