@@ -289,6 +289,7 @@ case "$COMMAND" in
             echo "Usage: agentwalletapi.sh user-tag-set <userTag> [--yes]"
             exit 1
         fi
+        confirm_risky_action "Setting the checkout user tag (one-time; it cannot be changed later)"
         json_escape_var USER_TAG_ESC "$USER_TAG"
         BODY="{\"userTag\":\"$USER_TAG_ESC\"}"
         curl -s -X PUT \

@@ -43,11 +43,11 @@ Response:
   "installInstructions": {
     "targetDirectory": "<your-workspace>/skills/agentwalletapi",
     "steps": [
-      "Preferred: run `npx -y @openclawcash/mcp-server` if this client supports MCP servers (requires AGENTWALLETAPI_KEY in the environment); skip the remaining steps if so",
+      "Preferred: run `npx -y @openclawcash/mcp-server@0.1.27` if this client supports MCP servers (requires AGENTWALLETAPI_KEY in the environment); skip the remaining steps if so",
       "Fallback only, when MCP is unavailable: git clone https://github.com/openclawcash/agentwalletapi <your-workspace>/skills/agentwalletapi",
       "Read <your-workspace>/skills/agentwalletapi/SKILL.md before running any command from the cloned skill"
     ],
-    "agentPrompt": "Prefer MCP: if this client supports MCP servers, run \"npx -y @openclawcash/mcp-server\" (requires AGENTWALLETAPI_KEY in the environment) and stop there. Only if MCP is unavailable, git clone https://github.com/openclawcash/agentwalletapi into <your-workspace>/skills/agentwalletapi, then read <your-workspace>/skills/agentwalletapi/SKILL.md before running anything inside it."
+    "agentPrompt": "Prefer MCP: if this client supports MCP servers, run \"npx -y @openclawcash/mcp-server@0.1.27\" (requires AGENTWALLETAPI_KEY in the environment) and stop there. Only if MCP is unavailable, git clone https://github.com/openclawcash/agentwalletapi into <your-workspace>/skills/agentwalletapi, then read <your-workspace>/skills/agentwalletapi/SKILL.md before running anything inside it."
   }
 }
 ```

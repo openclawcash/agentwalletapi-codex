@@ -2,7 +2,7 @@
   "mcpServers": {
     "openclawcash": {
       "command": "npx",
-      "args": ["-y", "@openclawcash/mcp-server"],
+      "args": ["-y", "@openclawcash/mcp-server@0.1.27"],
       "env": {
         "OPENCLAWCASH_AGENT_KEY": "${OPENCLAWCASH_AGENT_KEY}",
         "OPENCLAWCASH_BASE_URL": "${OPENCLAWCASH_BASE_URL:-https://openclawcash.com}"
