@@ -1,8 +1,9 @@
 # OpenClawCash Agent Wallet (Codex plugin)
 
-Managed EVM and Solana wallets for AI agents — balances, transfers, swaps, approvals, governance policy
-checks, cross-chain bridges, Escrow (formerly Get Paid) checkout, Polymarket, and YieldWolf Casino. Backed by the
-[OpenClawCash agent API](https://openclawcash.com/mcp).
+A crypto wallet for AI agents on Ethereum, Polygon, Base and Solana. Your agent gets an **API key, never
+a private key**, and every action is checked against the spending limits, allowlist and testnet-only rules
+you set before anything is signed. It can send, swap, bridge, trade on Polymarket and get paid through
+escrow. Backed by [OpenClawCash](https://openclawcash.com).
 
 The plugin connects Codex to the `openclawcash` MCP server (`@openclawcash/mcp-server` on npm) and bundles
 the `agentwalletapi` skill, so Codex follows the same safety model, approval flow, and wallet-label rules
@@ -34,8 +35,8 @@ The key is only ever sent to `https://openclawcash.com` (or an `https://<subdoma
 
 ## What you get
 
-- The `openclawcash` MCP server, exposing wallet, transfer, swap, approvals, checkout, Polymarket, and
-  YieldWolf Casino tools.
+- The `openclawcash` MCP server: wallet, transfer, swap, bridge, approval, escrow checkout and Polymarket
+  tools, all running through your wallet policies.
 - The `agentwalletapi` skill — endpoint reference, safety model, and wallet-label rules; see
   [`skills/agentwalletapi/SKILL.md`](skills/agentwalletapi/SKILL.md).
 
