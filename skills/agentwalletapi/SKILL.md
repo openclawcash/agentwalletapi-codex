@@ -1,12 +1,12 @@
 ---
 name: agentwalletapi
-description: OpenclawCash crypto wallet API for AI agents (also called openclawcash). Use when an agent needs to work with OpenclawCash-managed EVM and Solana wallets. Read-only - list wallets, balances, policies, transaction history, swap and bridge quotes. Fund-moving and account writes, each gated by explicit confirmation - native and token transfers, DEX swaps, token approvals, cross-chain bridges, wallet creation and private-key import (import is done by the human, never the agent), wallet rename, a one-time checkout user tag, Escrow checkout (create, fund, release, refund, dispute) and its webhooks, Polymarket orders and redemptions, and YieldWolf Casino calls.
+description: OpenclawCash crypto wallet API for AI agents (also called openclawcash). Use when an agent needs to work with OpenclawCash-managed EVM and Solana wallets. Read-only - list wallets, balances, policies, transaction history, swap and bridge quotes. Fund-moving and account writes, each gated by explicit confirmation - native and token transfers, DEX swaps, token approvals, cross-chain bridges, wallet creation and private-key import (import is done by the human, never the agent), a one-time checkout user tag, Escrow checkout (create, fund, release, refund, dispute) and its webhooks, Polymarket orders and redemptions, and YieldWolf Casino calls. Wallet rename is the one write without a confirmation step - it only changes a label and moves no funds.
 license: MIT
 allowed-tools: Bash(bash scripts/agentwalletapi.sh:*) Bash(bash scripts/setup.sh) Read
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.29.2"
+  version: "1.29.3"
   required_env_vars:
     - AGENTWALLETAPI_KEY
   optional_env_vars:
