@@ -11,9 +11,8 @@
 ## Security Notes
 
 - Start with read-only calls first (`wallets`, `wallet`, `policy`, `balance`, `supported-tokens`), preferably on testnets.
-- Write actions (`create`, `import`, `transfer`, `swap`, `approve`, `polymarket-*`) are high-risk and should use explicit confirmation in the CLI (`--yes`).
-- `POST /api/agent/wallets/import` sends a private key to OpenclawCash for encrypted storage and managed execution.
-- Wallet import and wallet creation are disabled unless the API key has permission enabled in dashboard (`allowWalletImport`, `allowWalletCreation`).
+- Write actions (`create`, `transfer`, `swap`, `approve`, `polymarket-*`) are high-risk and should use explicit confirmation in the CLI (`--yes`).
+- Wallet creation is disabled unless the API key has `allowWalletCreation` enabled in the dashboard. Importing an existing wallet is a dashboard-only, human action.
 - API keys may also be scoped by chain (`all`/`evm`/`solana`) and by wallet (`all` or a specific set of selected wallets).
 - `AGENTWALLETAPI_URL` may only be `https://openclawcash.com` or an `https://<subdomain>.openclawcash.com` host. The bundled CLI script validates this before attaching `X-Agent-Key` to any request and refuses to run otherwise, so the key cannot be redirected off-domain by an env var override.
 
@@ -290,39 +289,9 @@ Notes:
 - Agent must persist passphrase first, then send the storage fields plus `confirmExportPassphraseSaved: true`.
 - Never write the passphrase value into chat, a tool argument, or a command line: let the shell expand the env var named in `exportPassphraseStorageRef` into the request body.
 
-## Import Wallet (Agent API)
+## Import Wallet
 
-```
-POST /api/agent/wallets/import
-Content-Type: application/json
-X-Agent-Key: occ_your_api_key
-```
-
-Request:
-```json
-{
-  "label": "Treasury Imported",
-  "network": "solana-mainnet",
-  "privateKey": "..."
-}
-```
-
-Response:
-```json
-{
-  "id": 13,
-  "label": "Treasury Imported",
-  "address": "GmjrX8...",
-  "network": "solana-mainnet",
-  "chain": "solana"
-}
-```
-
-Notes:
-- API key must have wallet import enabled (`allowWalletImport`).
-- Import is a human action: an agent must never ask for, accept, or send a private key, since anything in the conversation reaches the model provider and the transcript. Humans import from the dashboard ("Import Existing Wallet") or the CLI `import` command (hidden prompt or stdin).
-- Supported networks: `mainnet`, `polygon-mainnet`, `base-mainnet`, `solana-mainnet`.
-- Endpoint is rate-limited per API key; on limit exceeded returns `429` + `Retry-After`.
+Importing an existing wallet by its private key is done by the human in the OpenClawCash dashboard ("Import Existing Wallet"), never by an agent: a private key in a conversation, tool argument or command reaches the model provider and the transcript. Neither the bundled CLI, the MCP server nor the Hermes plugin can import.
 
 ## Get Policies
 

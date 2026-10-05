@@ -1,12 +1,12 @@
 ---
 name: agentwalletapi
-description: OpenclawCash crypto wallet API for AI agents (also called openclawcash). Use when an agent needs to work with OpenclawCash-managed EVM and Solana wallets. Read-only - list wallets, balances, policies, transaction history, swap and bridge quotes. Fund-moving and account writes, each gated by explicit confirmation - native and token transfers, DEX swaps, token approvals, cross-chain bridges, wallet creation and private-key import (import is done by the human, never the agent), a one-time checkout user tag, Escrow checkout (create, fund, release, refund, dispute) and its webhooks, Polymarket orders and redemptions, and YieldWolf Casino calls. Wallet rename is the one write without a confirmation step - it only changes a label and moves no funds.
+description: OpenclawCash crypto wallet API for AI agents (also called openclawcash). Use when an agent needs to work with OpenclawCash-managed EVM and Solana wallets. Read-only - list wallets, balances, policies, transaction history, swap and bridge quotes. Fund-moving and account writes, each gated by explicit confirmation - native and token transfers, DEX swaps, token approvals, wallet creation, a one-time checkout user tag, Escrow checkout (create, fund, release, refund, dispute) and its webhooks, and Polymarket orders and redemptions. Cross-chain bridges and YieldWolf Casino calls are available through the MCP server and the API only, not the bundled CLI. Importing an existing wallet by private key is not an agent action - the human does it in the dashboard. Wallet rename is the one write without a confirmation step - it only changes a label and moves no funds.
 license: MIT
 allowed-tools: Bash(bash scripts/agentwalletapi.sh:*) Bash(bash scripts/setup.sh) Read
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.29.3"
+  version: "1.29.4"
   required_env_vars:
     - AGENTWALLETAPI_KEY
   optional_env_vars:
@@ -108,10 +108,6 @@ bash scripts/agentwalletapi.sh rename Q7X2K9P "Trading Bot v2"
 # Write actions (require explicit --yes)
 export WALLET_EXPORT_PASSPHRASE_OPS='your-strong-passphrase'
 bash scripts/agentwalletapi.sh create "Ops Wallet" sepolia WALLET_EXPORT_PASSPHRASE_OPS --yes
-# Import is run by the human, never by the agent: the CLI prompts for the key with hidden input
-bash scripts/agentwalletapi.sh import "Treasury Imported" mainnet --yes
-# Or read the key from a file the human controls (stdin), never from a command argument
-bash scripts/agentwalletapi.sh import "Poly Ops" polygon-mainnet - --yes < /path/to/private-key-file
 bash scripts/agentwalletapi.sh transfer Q7X2K9P 0xRecipient 0.01 --yes
 bash scripts/agentwalletapi.sh transfer Q7X2K9P 0xRecipient 100 USDC --yes
 bash scripts/agentwalletapi.sh quote mainnet WETH USDC 10000000000000000
@@ -151,12 +147,11 @@ bash scripts/agentwalletapi.sh polymarket-cancel Q7X2K9P order_id_here --yes
 - For transfer, use `amountDisplay` when you want human-readable units and let the API convert.
 - Legacy transfer aliases `amount` and `value` are still accepted for compatibility.
 
-### Import Input Safety
+### Importing Existing Wallets
 
 - Wallet import is optional and not required for normal wallet operations (list, balance, transfer, swap).
-- Import is a human action. An agent must never ask for, accept, or type a private key: anything in the conversation or a command line reaches the model provider and the transcript. Point the human to the dashboard ("Import Existing Wallet") or to running the CLI `import` command themselves, which prompts for the key with hidden input. The MCP server and the Hermes plugin do not expose import.
-- Import works only when the user explicitly enables API key permission `allowWalletImport` in dashboard settings.
-- Import execution requires explicit confirmation in the CLI (`--yes` for automation, or interactive `YES` prompt).
+- Importing an existing wallet by its private key is done by the human in the OpenClawCash dashboard ("Import Existing Wallet"), never by an agent: a private key in a conversation, tool argument or command reaches the model provider and the transcript. Neither the bundled CLI, the MCP server nor the Hermes plugin can import.
+- An agent must never ask for, accept, or type a private key. If the user wants an existing wallet managed by OpenClawCash, point them to the dashboard.
 - Avoid passing sensitive inputs as CLI arguments when possible (shell history/process logs risk).
 - Preferred options:
   - Interactive hidden prompt: omit the private key argument.
@@ -205,7 +200,7 @@ by an env var override.
 
 - **Agent API (API key auth):** `/api/agent/*`
   - Authenticate with `X-Agent-Key`
-  - Used for autonomous agent execution (wallets list/create/import, transactions, balance, transfer, swap, quote, approve, checkout escrow lifecycle, and polymarket venue operations)
+  - Used for autonomous agent execution (wallets list/create, transactions, balance, transfer, swap, quote, approve, checkout escrow lifecycle, and polymarket venue operations)
 - **Public install metadata API (no auth):** `GET /api/public/agentwalletapi/skill/latest`
   - Returns latest skill version, GitHub repo URL, and install instructions.
 
@@ -219,7 +214,6 @@ by an env var override.
 3a. `GET /api/agent/policies` - List governance policies for every wallet accessible to this API key. `GET /api/agent/policy?walletId=...` (or `walletLabel`/`walletAddress`) - Same, scoped to one wallet. Call before suggesting or executing a transfer/swap so the request stays inside configured limits.
 4. Optional wallet lifecycle actions:
    - `POST /api/agent/wallets/create` - Create a new wallet under API-key policy controls
-   - `POST /api/agent/wallets/import` - Import a `mainnet`, `polygon-mainnet`, `base-mainnet`, or `solana-mainnet` wallet under API-key policy controls
 5. `GET /api/agent/transactions?walletId=...` (or `walletLabel`/`walletAddress`) - Read merged wallet transaction history (on-chain + app-recorded). EVM wallets accept optional `&network=<id>` to scope to a single EVM chain or `&network=all` to merge across the bucket. Each row carries `data.network`.
 6. `GET /api/agent/supported-tokens?network=...` or `?chain=evm|solana` - Get recommended common, well-known token list + guidance (requires `X-Agent-Key`)
 7. `POST /api/agent/token-balance` - Check wallet balances (native + token balances; specific token by symbol/address supported)
@@ -283,7 +277,7 @@ Use this pattern for write actions:
    - "Do you want approval for every write action, or should I operate on your behalf for this session?"
 2. Store the chosen mode in conversation memory.
 3. If the mode is `confirm_each_write`:
-   - ask for approval before each transfer, swap, approval, import, or wallet creation
+   - ask for approval before each transfer, swap, approval, or wallet creation
    - after approval, execute with the MCP write tool or the legacy CLI fallback with `--yes`
 4. If the mode is `operate_on_my_behalf`:
    - do not ask again for each routine write the user directly instructs
@@ -320,7 +314,6 @@ Example:
 | `/api/agent/policies` | GET | Yes | List governance policies for every wallet accessible to this API key |
 | `/api/agent/policy` | GET | Yes | Get governance policies for one wallet |
 | `/api/agent/wallets/create` | POST | Yes | Create a new API-key-managed wallet |
-| `/api/agent/wallets/import` | POST | Yes | Import a mainnet/polygon-mainnet/base-mainnet/solana-mainnet wallet via API key |
 | `/api/agent/transactions` | GET | Yes | List per-wallet transaction history |
 | `/api/agent/transfer` | POST | Yes | Send native/token transfers (EVM + Solana). Not the checkout escrow funding path. |
 | `/api/agent/swap` | POST | Yes | Execute DEX swap (Uniswap on EVM, Jupiter on Solana mainnet) |
@@ -365,20 +358,17 @@ Example:
 | `/api/agent/venues/yieldwolf-casino/proxy/<upstream>` | GET | Yes | Read passthrough to YieldWolf's gateway (e.g. `agents/me/balance`, `transactions/history`) |
 | `/api/agent/venues/yieldwolf-casino/proxy/<upstream>` | POST | Yes | Write passthrough to YieldWolf's gateway (e.g. `games/play`, `transactions/withdraw`); supports `X-Idempotency-Key` |
 
-## Agent Wallet Create/Import (Agent API)
+## Agent Wallet Create (Agent API)
 
-Agent-side wallet lifecycle endpoints:
+Agent-side wallet lifecycle endpoint:
 
 - `POST /api/agent/wallets/create`
-- `POST /api/agent/wallets/import`
 
 Behavior notes:
-- Both require `X-Agent-Key`.
-- Both are gated by API key permissions configured in dashboard:
-  - `allowWalletCreation` for create
-  - `allowWalletImport` for import
-- Both are rate-limited per API key. Exceeding the limit returns `429` with `Retry-After`.
-- Agent import supports `mainnet`, `polygon-mainnet`, `base-mainnet`, and `solana-mainnet`.
+- Requires `X-Agent-Key`.
+- Gated by the API key permission `allowWalletCreation`, configured in the dashboard.
+- Rate-limited per API key. Exceeding the limit returns `429` with `Retry-After`.
+- Importing an existing wallet by its private key is done by the human in the OpenClawCash dashboard ("Import Existing Wallet"), never by an agent: a private key in a conversation, tool argument or command reaches the model provider and the transcript. Neither the bundled CLI, the MCP server nor the Hermes plugin can import.
 - Agent wallet create requires:
   - `exportPassphrase` (minimum 12 characters)
   - `exportPassphraseStorageType`
