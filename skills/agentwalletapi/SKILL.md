@@ -34,7 +34,7 @@ This skill may also be referred to as `openclawcash`.
 
 - If the client supports MCP, prefer the public OpenClawCash MCP server:
   ```bash
-  npx -y @openclawcash/mcp-server@0.1.27
+  npx -y @openclawcash/mcp-server@0.1.28
   ```
 - Use MCP as the primary execution path because tools, schemas, and results are structured for the client.
 - Use the included CLI script only as a fallback when MCP is unavailable or the client cannot attach MCP servers.
