@@ -2,8 +2,15 @@
 # OpenclawCash CLI Tool
 # Usage: ./agentwalletapi.sh <command> [options]
 #
-# Requirements: curl (jq optional for pretty output)
+# Requirements: bash, curl (jq optional for pretty output)
 # Sensitive env var: AGENTWALLETAPI_KEY (in .env)
+#
+# Network rule: every request goes to AGENTWALLETAPI_URL (default https://openclawcash.com).
+# The script refuses to run unless that host is openclawcash.com or an https subdomain of it,
+# so AGENTWALLETAPI_KEY (sent as the X-Agent-Key header) and the wallet export passphrase
+# (wallet creation only) are never sent anywhere else. Only AGENTWALLETAPI_KEY and
+# AGENTWALLETAPI_URL are read from .env, as plain NAME=value lines that are never executed.
+# Write commands, including rename, need --yes or a typed YES at an interactive prompt.
 #
 # Commands:
 #   skill-latest                Get latest skill version + install metadata (public, no API key)
@@ -11,7 +18,7 @@
 #   user-tag-get                Read global checkout user tag for this API key owner
 #   user-tag-set <userTag> [--yes]   Set global checkout user tag once (immutable after set; 3-8 lowercase chars: a-z, 0-9, ., _, -)
 #   wallet <walletId|publicWalletId|walletLabel> [chain]   Get one wallet detail with balances
-#   rename <walletId|publicWalletId> <newLabel>   Rename a wallet (update its label)
+#   rename <walletId|publicWalletId> <newLabel> [--yes]   Rename a wallet (update its label; moves no funds)
 #   policies                    List governance policies for every wallet accessible to this API key
 #   policy <walletId|publicWalletId|walletLabel>   Get governance policies for one wallet
 #   create <label> [network] <passphraseEnvVar> [--yes]    Create a wallet (default network: sepolia)
@@ -22,12 +29,13 @@
 #   quote <network> <tokenIn> <tokenOut> <amountInBaseUnits> [chain]   Get swap quote
 #   swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]
 #   approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]   Approve ERC-20 allowance
-#   checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [criteriaJson|@criteriaFile] [--yes]
+#   checkout-escrow-rules               Print the public escrow rules (no API key needed); read before creating or funding an escrow
+#   checkout-payreq-create <walletSelector> <amountBaseUnits> <expiresSec> <autoReleaseSec> <disputeWindowSec> <deliverBySec> <deliverablesJson|@deliverablesFile> [--yes]   (deliverables and deliverBySec are required)
 #   checkout-payreq-get <payreqId>
 #   checkout-escrow-get <escrowId>
 #   checkout-funding-confirm <escrowId> <txHash> [minConfirmations] [--yes]
 #   checkout-accept <escrowId> [--yes]
-#   checkout-proof <escrowId> <proofHash> [proofUrl] [--yes]   (proofUrl is required when the payreq has acceptanceCriteria; output shows proofVerification, autoRelease, or the 422 acceptance_checks_failed details)
+#   checkout-evidence <escrowId> <deliverableId> <uri> [sha256] [note] [--yes]   (append-only evidence for seller or buyer; replaces checkout-proof)
 #   checkout-dispute <escrowId> <reasonCode> [--yes]
 #   checkout-quick-pay <escrowId> <walletSelector> [--yes]
 #   checkout-swap-and-pay-quote <escrowId> <walletSelector>
@@ -315,10 +323,11 @@ case "$COMMAND" in
         ;;
 
     rename)
+        confirm_risky_action "Wallet rename (changes the label only, moves no funds)"
         SELECTOR="$2"
         NEW_LABEL="$3"
         if [ -z "$SELECTOR" ] || [ -z "$NEW_LABEL" ]; then
-            echo "Usage: agentwalletapi.sh rename <walletId|publicWalletId> <newLabel>"
+            echo "Usage: agentwalletapi.sh rename <walletId|publicWalletId> <newLabel> [--yes]"
             exit 1
         fi
         json_escape_var NEW_LABEL_ESC "$NEW_LABEL"
@@ -360,6 +369,11 @@ case "$COMMAND" in
             echo "  Example:"
             echo "    export WALLET_EXPORT_PASSPHRASE_OPS='your-strong-passphrase'"
             echo "    agentwalletapi.sh create \"Ops Wallet\" sepolia WALLET_EXPORT_PASSPHRASE_OPS --yes"
+            exit 1
+        fi
+        if ! [[ "$PASSPHRASE_ENV_VAR" =~ ^WALLET_EXPORT_PASSPHRASE[A-Z0-9_]*$ ]]; then
+            echo "Error: passphrase env var name '$PASSPHRASE_ENV_VAR' is not allowed."
+            echo "The name must match ^WALLET_EXPORT_PASSPHRASE[A-Z0-9_]*\$ (for example WALLET_EXPORT_PASSPHRASE_OPS)."
             exit 1
         fi
         PASSPHRASE_VALUE="${!PASSPHRASE_ENV_VAR}"
@@ -563,14 +577,17 @@ case "$COMMAND" in
         EXPIRES="${4:-3600}"
         AUTO_RELEASE="${5:-3600}"
         DISPUTE_WINDOW="${6:-3600}"
-        CRITERIA="$7"
-        if [ -z "$WALLET_SELECTOR" ] || [ -z "$AMOUNT" ]; then
-            echo "Usage: agentwalletapi.sh checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [criteriaJson|@criteriaFile] [--yes]"
+        DELIVER_BY="$7"
+        DELIVERABLES="$8"
+        if [ -z "$WALLET_SELECTOR" ] || [ -z "$AMOUNT" ] || [ -z "$DELIVER_BY" ] || [ -z "$DELIVERABLES" ]; then
+            echo "Usage: agentwalletapi.sh checkout-payreq-create <walletSelector> <amountBaseUnits> <expiresSec> <autoReleaseSec> <disputeWindowSec> <deliverBySec> <deliverablesJson|@deliverablesFile> [--yes]"
+            echo "deliverables and deliverBySec are required. deliverables is a JSON array: [{\"id\":\"report\",\"kind\":\"file\",\"description\":\"...\",\"required\":true}]"
             exit 1
         fi
         require_uint "expiresSec" "$EXPIRES"
         require_uint "autoReleaseSec" "$AUTO_RELEASE"
         require_uint "disputeWindowSec" "$DISPUTE_WINDOW"
+        require_uint "deliverBySec" "$DELIVER_BY"
         if [ "$EXPIRES" -lt 3600 ] || [ "$AUTO_RELEASE" -lt 3600 ] || [ "$DISPUTE_WINDOW" -lt 3600 ]; then
             echo "expiresSec, autoReleaseSec, and disputeWindowSec must each be at least 3600 (1 hour)." >&2
             exit 1
@@ -579,22 +596,24 @@ case "$COMMAND" in
             echo "disputeWindowSec must be less than or equal to autoReleaseSec." >&2
             exit 1
         fi
+        if [ "$DELIVER_BY" -lt 3600 ] || [ "$DELIVER_BY" -ge "$AUTO_RELEASE" ]; then
+            echo "deliverBySec must be at least 3600 and less than autoReleaseSec." >&2
+            exit 1
+        fi
         json_escape_var AMOUNT_ESC "$AMOUNT"
         BODY="{"
         append_wallet_or_address_json_field BODY "$WALLET_SELECTOR"
         BODY="$BODY, \"amount\": \"$AMOUNT_ESC\", \"expiresInSeconds\": $EXPIRES, \"autoReleaseSeconds\": $AUTO_RELEASE, \"disputeWindowSeconds\": $DISPUTE_WINDOW"
-        if [ -n "$CRITERIA" ]; then
-            # Acceptance criteria: inline JSON object, or @path to a JSON file.
-            if [ "${CRITERIA#@}" != "$CRITERIA" ]; then
-                CRITERIA_FILE="${CRITERIA#@}"
-                if [ ! -r "$CRITERIA_FILE" ]; then
-                    echo "criteria file not readable: $CRITERIA_FILE" >&2
-                    exit 1
-                fi
-                CRITERIA="$(cat "$CRITERIA_FILE")"
+        # Deliverables: inline JSON array, or @path to a JSON file.
+        if [ "${DELIVERABLES#@}" != "$DELIVERABLES" ]; then
+            DELIVERABLES_FILE="${DELIVERABLES#@}"
+            if [ ! -r "$DELIVERABLES_FILE" ]; then
+                echo "deliverables file not readable: $DELIVERABLES_FILE" >&2
+                exit 1
             fi
-            BODY="$BODY, \"acceptanceCriteria\": $CRITERIA"
+            DELIVERABLES="$(cat "$DELIVERABLES_FILE")"
         fi
+        BODY="$BODY, \"deliverBySeconds\": $DELIVER_BY, \"deliverables\": $DELIVERABLES"
         BODY="$BODY}"
         curl -s -X POST \
             -H "X-Agent-Key: $AGENTWALLETAPI_KEY" \
@@ -602,6 +621,10 @@ case "$COMMAND" in
             -H "Idempotency-Key: $(new_idempotency_key)" \
             -d "$BODY" \
             "$BASE_URL/api/agent/checkout/payreq" | pretty_print_json
+        ;;
+
+    checkout-escrow-rules)
+        curl -s "$BASE_URL/api/public/checkout/escrow-rules" | pretty_print_json
         ;;
 
     checkout-payreq-get)
@@ -664,20 +687,27 @@ case "$COMMAND" in
             "$BASE_URL/api/agent/checkout/escrows/$ESCROW_ID/accept" | pretty_print_json
         ;;
 
-    checkout-proof)
-        confirm_risky_action "Checkout proof submit"
+    checkout-evidence)
+        confirm_risky_action "Checkout evidence submit"
         ESCROW_ID="$2"
-        PROOF_HASH="$3"
-        PROOF_URL="$4"
-        if [ -z "$ESCROW_ID" ] || [ -z "$PROOF_HASH" ]; then
-            echo "Usage: agentwalletapi.sh checkout-proof <escrowId> <proofHash> [proofUrl] [--yes]"
+        DELIVERABLE_ID="$3"
+        EVIDENCE_URI="$4"
+        EVIDENCE_SHA="$5"
+        EVIDENCE_NOTE="$6"
+        if [ -z "$ESCROW_ID" ] || [ -z "$DELIVERABLE_ID" ] || [ -z "$EVIDENCE_URI" ]; then
+            echo "Usage: agentwalletapi.sh checkout-evidence <escrowId> <deliverableId> <uri> [sha256] [note] [--yes]"
             exit 1
         fi
-        json_escape_var PROOF_HASH_ESC "$PROOF_HASH"
-        BODY="{\"proofHash\":\"$PROOF_HASH_ESC\""
-        if [ -n "$PROOF_URL" ]; then
-            json_escape_var PROOF_URL_ESC "$PROOF_URL"
-            BODY="$BODY, \"proofUrl\": \"$PROOF_URL_ESC\""
+        json_escape_var DELIVERABLE_ID_ESC "$DELIVERABLE_ID"
+        json_escape_var EVIDENCE_URI_ESC "$EVIDENCE_URI"
+        BODY="{\"deliverableId\":\"$DELIVERABLE_ID_ESC\", \"uri\": \"$EVIDENCE_URI_ESC\""
+        if [ -n "$EVIDENCE_SHA" ]; then
+            json_escape_var EVIDENCE_SHA_ESC "$EVIDENCE_SHA"
+            BODY="$BODY, \"sha256\": \"$EVIDENCE_SHA_ESC\""
+        fi
+        if [ -n "$EVIDENCE_NOTE" ]; then
+            json_escape_var EVIDENCE_NOTE_ESC "$EVIDENCE_NOTE"
+            BODY="$BODY, \"note\": \"$EVIDENCE_NOTE_ESC\""
         fi
         BODY="$BODY}"
         curl -s -X POST \
@@ -685,7 +715,7 @@ case "$COMMAND" in
             -H "Content-Type: application/json" \
             -H "Idempotency-Key: $(new_idempotency_key)" \
             -d "$BODY" \
-            "$BASE_URL/api/agent/checkout/escrows/$ESCROW_ID/proof" | pretty_print_json
+            "$BASE_URL/api/agent/checkout/escrows/$ESCROW_ID/evidence" | pretty_print_json
         ;;
 
     checkout-dispute)
@@ -1132,7 +1162,7 @@ case "$COMMAND" in
         echo "  user-tag-get                               Read global checkout user tag"
         echo "  user-tag-set <userTag> [--yes]            Set global checkout user tag once (3-8 lowercase chars: a-z, 0-9, ., _, -)"
         echo "  wallet <walletId|publicWalletId|walletLabel> [chain]  Get one wallet detail with balances"
-        echo "  rename <walletId|publicWalletId> <newLabel>  Rename a wallet (update its label)"
+        echo "  rename <walletId|publicWalletId> <newLabel> [--yes]  Rename a wallet (update its label)"
         echo "  policies                                   List governance policies for every accessible wallet"
         echo "  policy <walletId|publicWalletId|walletLabel>  Get governance policies for one wallet"
         echo "  create <label> [network] <passphraseEnvVar> [--yes]  Create wallet (default network: sepolia)"
@@ -1143,12 +1173,13 @@ case "$COMMAND" in
         echo "  quote <network> <tokenIn> <tokenOut> <amountInBaseUnits> [chain]  Get swap quote"
         echo "  swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]  Execute swap"
         echo "  approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]  Approve allowance"
-        echo "  checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [criteriaJson|@criteriaFile] [--yes]"
+        echo "  checkout-payreq-create <walletSelector> <amountBaseUnits> <expiresSec> <autoReleaseSec> <disputeWindowSec> <deliverBySec> <deliverablesJson|@deliverablesFile> [--yes]"
+        echo "  checkout-escrow-rules            (public, no key; read before creating or funding an escrow)"
         echo "  checkout-payreq-get <payreqId>"
         echo "  checkout-escrow-get <escrowId>"
         echo "  checkout-funding-confirm <escrowId> <txHash> [minConfirmations] [--yes]"
         echo "  checkout-accept <escrowId> [--yes]"
-        echo "  checkout-proof <escrowId> <proofHash> [proofUrl] [--yes]"
+        echo "  checkout-evidence <escrowId> <deliverableId> <uri> [sha256] [note] [--yes]"
         echo "  checkout-dispute <escrowId> <reasonCode> [--yes]"
         echo "  checkout-quick-pay <escrowId> <walletSelector> [--yes]"
         echo "  checkout-swap-and-pay-quote <escrowId> <walletSelector>"
@@ -1179,7 +1210,7 @@ case "$COMMAND" in
         echo "  agentwalletapi.sh create 'Ops Wallet' sepolia WALLET_EXPORT_PASSPHRASE_OPS --yes"
         echo "  agentwalletapi.sh transactions 2"
         echo "  agentwalletapi.sh balance 2"
-        echo "  agentwalletapi.sh rename 2 'Trading Bot v2'"
+        echo "  agentwalletapi.sh rename 2 'Trading Bot v2' --yes"
         echo "  agentwalletapi.sh transfer 2 0xRecipient 0.01 --yes"
         echo "  agentwalletapi.sh transfer 2 0xRecipient 100 USDC --yes"
         echo "  agentwalletapi.sh tokens mainnet"

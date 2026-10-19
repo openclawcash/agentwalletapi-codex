@@ -1,6 +1,8 @@
 #!/bin/bash
 # OpenclawCash Skill Setup
-# Creates the .env file for API key configuration
+# Creates this skill's own config file ($SKILL_DIR/.env) for its API key. The file holds only a
+# placeholder until you edit it. Makes no network calls. The CLI later reads only
+# AGENTWALLETAPI_KEY and AGENTWALLETAPI_URL from it and sends the key only to openclawcash.com.
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$SKILL_DIR/.env"
