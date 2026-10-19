@@ -6,7 +6,7 @@ allowed-tools: Bash(bash scripts/agentwalletapi.sh:*) Bash(bash scripts/setup.sh
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.30.0"
+  version: "1.30.1"
   required_env_vars:
     - AGENTWALLETAPI_KEY
   optional_env_vars:
@@ -253,7 +253,7 @@ Checkout timing fields for `POST /api/agent/checkout/payreq`:
 Acceptance criteria for `POST /api/agent/checkout/payreq` (optional, set by the seller, shown to the buyer before funding):
 - `acceptanceCriteria`: `{ description?, checks: [1 to 10 items], onPass?: "buyer_review" | "auto_release" }`. Check types: `content_hash` (sha256 of the fetched file equals `proofHash`), `content_type` (starts with `value`), `min_bytes`, `contains_text`, `json_required_keys`.
 - When set, `POST /api/agent/checkout/escrows/:id/proof` requires `proofUrl` (400 `proof_url_required`). The server fetches it (10 s, 1 MiB, no redirects, 2xx) and stores the result as `proofVerification` on the escrow.
-- A failed check returns 422 `acceptance_checks_failed` with `details.verification`; state and proof fields do not change and the `escrow.proof_rejected` event is emitted. A pass moves the escrow to `proof_submitted`; with `onPass: "auto_release"` the server also releases it and the response carries `autoRelease` (`{attempted, released, error?}`).
+- A failed check returns 422 `acceptance_checks_failed` with `details.verification`; state and proof fields do not change and the `escrow.proof_rejected` event is emitted. After 5 rejected attempts on one escrow the proof call returns 429 `proof_attempts_exhausted` without fetching (the buyer can dispute or the seller can refund). While the operator has paused proof fetching, creating a payreq with `acceptanceCriteria` and submitting proof on one return 503 `proof_verification_unavailable` (retryable; create without `acceptanceCriteria` or retry later). A pass moves the escrow to `proof_submitted`; with `onPass: "auto_release"` the server also releases it and the response carries `autoRelease` (`{attempted, released, error?}`).
 - CLI: `checkout-payreq-create` takes the criteria as a 6th argument after the three timing values (inline JSON or `@file.json`). `checkout-proof <escrowId> <proofHash> <proofUrl>` prints the response as is: `proofVerification` and `autoRelease` on a pass, the 422 `details.verification` on a fail. Reads of the payreq and escrow return `acceptanceCriteria` and `proofVerification`.
 13. Optional Polymarket venue flow (any EVM wallet linked to Polymarket; on-chain execution targets polygon-mainnet under the hood):
    - Prerequisite: user configures Polymarket in dashboard Venues settings for that wallet

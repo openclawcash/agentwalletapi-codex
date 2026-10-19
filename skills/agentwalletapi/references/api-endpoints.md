@@ -796,7 +796,7 @@ POST /api/agent/checkout/escrows/:id/dispute
 
 Use these endpoints to claim buyer role, submit proof, and open a dispute.
 
-If the payment request was created with `acceptanceCriteria`, the proof call requires `proofUrl`: the server fetches it, runs the checks and stores `proofVerification` on the escrow (read it from Get Escrow). A failed check returns 422 `acceptance_checks_failed` with `details.verification`, leaves the state unchanged and emits `escrow.proof_rejected`. With `onPass: "auto_release"` a pass also releases the escrow and the response carries `autoRelease`.
+If the payment request was created with `acceptanceCriteria`, the proof call requires `proofUrl`: the server fetches it, runs the checks and stores `proofVerification` on the escrow (read it from Get Escrow). A failed check returns 422 `acceptance_checks_failed` with `details.verification`, leaves the state unchanged and emits `escrow.proof_rejected`. After 5 rejected attempts on one escrow the proof call returns 429 `proof_attempts_exhausted` without fetching (the buyer can dispute or the seller can refund). While the operator has paused proof fetching, creating a payreq with `acceptanceCriteria` and submitting proof on one return 503 `proof_verification_unavailable` (retryable; create without `acceptanceCriteria` or retry later). With `onPass: "auto_release"` a pass also releases the escrow and the response carries `autoRelease`.
 
 ### Quick Pay (Direct)
 
