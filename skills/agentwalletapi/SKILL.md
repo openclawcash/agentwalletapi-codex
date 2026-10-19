@@ -6,7 +6,7 @@ allowed-tools: Bash(bash scripts/agentwalletapi.sh:*) Bash(bash scripts/setup.sh
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.29.4"
+  version: "1.30.0"
   required_env_vars:
     - AGENTWALLETAPI_KEY
   optional_env_vars:
@@ -115,7 +115,10 @@ bash scripts/agentwalletapi.sh quote solana-mainnet SOL USDC 10000000 solana
 bash scripts/agentwalletapi.sh swap Q7X2K9P WETH USDC 10000000000000000 0.5 --yes
 # Checkout escrow lifecycle
 bash scripts/agentwalletapi.sh checkout-payreq-create Q7X2K9P 30000000 --yes
+bash scripts/agentwalletapi.sh checkout-payreq-create Q7X2K9P 30000000 3600 3600 3600 '{"description":"CSV report","checks":[{"type":"content_type","value":"text/csv"},{"type":"min_bytes","value":100}],"onPass":"buyer_review"}' --yes
+bash scripts/agentwalletapi.sh checkout-payreq-create Q7X2K9P 30000000 3600 3600 3600 @criteria.json --yes
 bash scripts/agentwalletapi.sh checkout-payreq-get pr_a1b2c3
+bash scripts/agentwalletapi.sh checkout-proof es_d4e5f6 <sha256-of-deliverable> https://example.com/report.csv --yes
 bash scripts/agentwalletapi.sh checkout-escrow-get es_d4e5f6
 bash scripts/agentwalletapi.sh checkout-quick-pay es_d4e5f6 Q7X2K9P --yes
 bash scripts/agentwalletapi.sh checkout-swap-and-pay-quote es_d4e5f6 Q7X2K9P
@@ -239,13 +242,19 @@ by an env var override.
    - `POST /api/agent/checkout/escrows/:id/release` - Release funds
    - `POST /api/agent/checkout/escrows/:id/refund` - Refund funds
    - `POST /api/agent/checkout/escrows/:id/cancel` - Cancel escrow
-   - `GET|POST /api/agent/checkout/webhooks` and `PATCH|DELETE /api/agent/checkout/webhooks/:id` - Manage webhooks. `eventTypes` accepts the 9 `escrow.*` events or `*`, and `*` covers escrow events only; `wallet.transaction.confirmed` is the one wallet event and must be named. There is no failed wallet event: a transfer that fails is refused before it is recorded. Deliveries are signed per Standard Webhooks; see references/api-endpoints.md
+   - `GET|POST /api/agent/checkout/webhooks` and `PATCH|DELETE /api/agent/checkout/webhooks/:id` - Manage webhooks. `eventTypes` accepts the 10 `escrow.*` events or `*`, and `*` covers escrow events only; `wallet.transaction.confirmed` is the one wallet event and must be named. There is no failed wallet event: a transfer that fails is refused before it is recorded. Deliveries are signed per Standard Webhooks; see references/api-endpoints.md
 
 Checkout timing fields for `POST /api/agent/checkout/payreq`:
 - `expiresInSeconds`: funding deadline before request expires.
 - `autoReleaseSeconds`: when funded escrow can auto-release if no dispute exists.
 - `disputeWindowSeconds`: how long dispute can be opened after auto-release point.
 - Constraints: all three must be at least `3600` seconds, and `disputeWindowSeconds <= autoReleaseSeconds`.
+
+Acceptance criteria for `POST /api/agent/checkout/payreq` (optional, set by the seller, shown to the buyer before funding):
+- `acceptanceCriteria`: `{ description?, checks: [1 to 10 items], onPass?: "buyer_review" | "auto_release" }`. Check types: `content_hash` (sha256 of the fetched file equals `proofHash`), `content_type` (starts with `value`), `min_bytes`, `contains_text`, `json_required_keys`.
+- When set, `POST /api/agent/checkout/escrows/:id/proof` requires `proofUrl` (400 `proof_url_required`). The server fetches it (10 s, 1 MiB, no redirects, 2xx) and stores the result as `proofVerification` on the escrow.
+- A failed check returns 422 `acceptance_checks_failed` with `details.verification`; state and proof fields do not change and the `escrow.proof_rejected` event is emitted. A pass moves the escrow to `proof_submitted`; with `onPass: "auto_release"` the server also releases it and the response carries `autoRelease` (`{attempted, released, error?}`).
+- CLI: `checkout-payreq-create` takes the criteria as a 6th argument after the three timing values (inline JSON or `@file.json`). `checkout-proof <escrowId> <proofHash> <proofUrl>` prints the response as is: `proofVerification` and `autoRelease` on a pass, the 422 `details.verification` on a fail. Reads of the payreq and escrow return `acceptanceCriteria` and `proofVerification`.
 13. Optional Polymarket venue flow (any EVM wallet linked to Polymarket; on-chain execution targets polygon-mainnet under the hood):
    - Prerequisite: user configures Polymarket in dashboard Venues settings for that wallet
    - `GET /api/agent/venues/polymarket/market/resolve` resolves `marketUrl`/`slug` + human-readable `outcome` to the exact `tokenId` needed for order tools

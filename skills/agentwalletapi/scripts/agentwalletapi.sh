@@ -22,12 +22,12 @@
 #   quote <network> <tokenIn> <tokenOut> <amountInBaseUnits> [chain]   Get swap quote
 #   swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]
 #   approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]   Approve ERC-20 allowance
-#   checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [--yes]
+#   checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [criteriaJson|@criteriaFile] [--yes]
 #   checkout-payreq-get <payreqId>
 #   checkout-escrow-get <escrowId>
 #   checkout-funding-confirm <escrowId> <txHash> [minConfirmations] [--yes]
 #   checkout-accept <escrowId> [--yes]
-#   checkout-proof <escrowId> <proofHash> [proofUrl] [--yes]
+#   checkout-proof <escrowId> <proofHash> [proofUrl] [--yes]   (proofUrl is required when the payreq has acceptanceCriteria; output shows proofVerification, autoRelease, or the 422 acceptance_checks_failed details)
 #   checkout-dispute <escrowId> <reasonCode> [--yes]
 #   checkout-quick-pay <escrowId> <walletSelector> [--yes]
 #   checkout-swap-and-pay-quote <escrowId> <walletSelector>
@@ -563,8 +563,9 @@ case "$COMMAND" in
         EXPIRES="${4:-3600}"
         AUTO_RELEASE="${5:-3600}"
         DISPUTE_WINDOW="${6:-3600}"
+        CRITERIA="$7"
         if [ -z "$WALLET_SELECTOR" ] || [ -z "$AMOUNT" ]; then
-            echo "Usage: agentwalletapi.sh checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [--yes]"
+            echo "Usage: agentwalletapi.sh checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [criteriaJson|@criteriaFile] [--yes]"
             exit 1
         fi
         require_uint "expiresSec" "$EXPIRES"
@@ -581,7 +582,20 @@ case "$COMMAND" in
         json_escape_var AMOUNT_ESC "$AMOUNT"
         BODY="{"
         append_wallet_or_address_json_field BODY "$WALLET_SELECTOR"
-        BODY="$BODY, \"amount\": \"$AMOUNT_ESC\", \"expiresInSeconds\": $EXPIRES, \"autoReleaseSeconds\": $AUTO_RELEASE, \"disputeWindowSeconds\": $DISPUTE_WINDOW}"
+        BODY="$BODY, \"amount\": \"$AMOUNT_ESC\", \"expiresInSeconds\": $EXPIRES, \"autoReleaseSeconds\": $AUTO_RELEASE, \"disputeWindowSeconds\": $DISPUTE_WINDOW"
+        if [ -n "$CRITERIA" ]; then
+            # Acceptance criteria: inline JSON object, or @path to a JSON file.
+            if [ "${CRITERIA#@}" != "$CRITERIA" ]; then
+                CRITERIA_FILE="${CRITERIA#@}"
+                if [ ! -r "$CRITERIA_FILE" ]; then
+                    echo "criteria file not readable: $CRITERIA_FILE" >&2
+                    exit 1
+                fi
+                CRITERIA="$(cat "$CRITERIA_FILE")"
+            fi
+            BODY="$BODY, \"acceptanceCriteria\": $CRITERIA"
+        fi
+        BODY="$BODY}"
         curl -s -X POST \
             -H "X-Agent-Key: $AGENTWALLETAPI_KEY" \
             -H "Content-Type: application/json" \
@@ -1129,7 +1143,7 @@ case "$COMMAND" in
         echo "  quote <network> <tokenIn> <tokenOut> <amountInBaseUnits> [chain]  Get swap quote"
         echo "  swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]  Execute swap"
         echo "  approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]  Approve allowance"
-        echo "  checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [--yes]"
+        echo "  checkout-payreq-create <walletSelector> <amountBaseUnits> [expiresSec] [autoReleaseSec] [disputeWindowSec] [criteriaJson|@criteriaFile] [--yes]"
         echo "  checkout-payreq-get <payreqId>"
         echo "  checkout-escrow-get <escrowId>"
         echo "  checkout-funding-confirm <escrowId> <txHash> [minConfirmations] [--yes]"

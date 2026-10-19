@@ -796,6 +796,8 @@ POST /api/agent/checkout/escrows/:id/dispute
 
 Use these endpoints to claim buyer role, submit proof, and open a dispute.
 
+If the payment request was created with `acceptanceCriteria`, the proof call requires `proofUrl`: the server fetches it, runs the checks and stores `proofVerification` on the escrow (read it from Get Escrow). A failed check returns 422 `acceptance_checks_failed` with `details.verification`, leaves the state unchanged and emits `escrow.proof_rejected`. With `onPass: "auto_release"` a pass also releases the escrow and the response carries `autoRelease`.
+
 ### Quick Pay (Direct)
 
 ```
@@ -835,7 +837,7 @@ DELETE /api/agent/checkout/webhooks/:id
 
 Subscribe and manage event deliveries. `eventTypes` accepts:
 
-- Escrow events: `escrow.accepted`, `escrow.funded`, `escrow.proof_submitted`, `escrow.disputed`, `escrow.cancelled`, `escrow.released`, `escrow.refunded`, `escrow.expired`, `escrow.failed`.
+- Escrow events: `escrow.accepted`, `escrow.funded`, `escrow.proof_submitted`, `escrow.proof_rejected`, `escrow.disputed`, `escrow.cancelled`, `escrow.released`, `escrow.refunded`, `escrow.expired`, `escrow.failed`.
 - Wallet events (must be named, `*` does not include them): `wallet.transaction.confirmed`, sent when a transaction is recorded on one of your wallets. Payload `data`: `walletId`, `walletAddress`, `network`, `transactionId`, `type`, `status`, `direction` (`incoming` or `outgoing`), `hash`, `from`, `to`, `value`, `fee`, `platformFee` (`value` and the fees are strings in base units; `from` is the sending address when it is known). There is no failed wallet event: a transfer that fails is refused before it is recorded, so these events report what landed.
 
 Each delivery is a JSON `POST` with the body `{ eventId, eventType, createdAt, data }` and these headers:
